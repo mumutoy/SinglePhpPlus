@@ -426,15 +426,15 @@ class DB {
         if(!isset($dbConf['DB_CHARSET'])){
             $dbConf['DB_CHARSET'] = 'utf8';
         }
-        $this->_db = mysql_connect($dbConf['DB_HOST'].':'.$dbConf['DB_PORT'],$dbConf['DB_USER'],$dbConf['DB_PWD']);
+        $this->_db = @new mysqli($dbConf['DB_HOST'].':'.$dbConf['DB_PORT'],$dbConf['DB_USER'],$dbConf['DB_PWD'],$dbConf['DB_NAME']);
         if($this->_db === false){
-            halt(mysql_error());
+            halt(mysqli_error());
         }
-        $selectDb = mysql_select_db($dbConf['DB_NAME'],$this->_db);
+        /*$selectDb = mysqli_select_db($dbConf['DB_NAME'],$this->_db);
         if($selectDb === false){
-            halt(mysql_error());
-        }
-        mysql_set_charset($dbConf['DB_CHARSET']);
+            halt(mysqli_error());
+        }*/
+        $this->_db->set_charset($dbConf['DB_CHARSET']);
     }
     private function __clone(){}
 
@@ -459,7 +459,7 @@ class DB {
      * @return string 转义后的字符串
      */
     public function escape($str){
-        return mysql_real_escape_string($str, $this->_db);
+        return $this->_db->escape_string($str);
     }
     /**
      * 查询，用于select语句
@@ -471,19 +471,19 @@ class DB {
         $this->_error = '';
         $this->_lastSql = $sql;
         $this->logSql();
-        $res = mysql_query($sql,$this->_db);
+        $res = $this->_db->query($sql);
         if($res === false){
-            $this->_error = mysql_error($this->_db);
+            $this->_error = $this->_db->error;
             $this->logError();
             return false;
         }else{
-            $this->_rows = mysql_num_rows($res);
+            $this->_rows = $res->num_rows;
             $result = array();
             if($this->_rows >0) {
-                while($row = mysql_fetch_array($res, MYSQL_ASSOC)){
+                while($row = $res->fetch_array(MYSQLI_ASSOC)){
                     $result[]   =   $row;
                 }
-                mysql_data_seek($res,0);
+                $res->data_seek(0);
             }
             return $result;
         }
@@ -498,13 +498,13 @@ class DB {
         $this->_error = '';
         $this->_lastSql = $sql;
         $this->logSql();
-        $result =   mysql_query($sql, $this->_db) ;
+        $result =   $this->_db->query($sql) ;
         if ( false === $result) {
-            $this->_error = mysql_error($this->_db);
+            $this->_error = $this->_db->error;
             $this->logError();
             return false;
         } else {
-            $this->_rows = mysql_affected_rows($this->_db);
+            $this->_rows = $this->_db->affected_rows;
             return $this->_rows;
         }
     }
@@ -520,7 +520,7 @@ class DB {
      * @return int 自增ID
      */
     public function getInsertId() {
-        return mysql_insert_id($this->_db);
+        return $this->_db->insert_id;
     }
     /**
      * 获取上一次查询的sql
