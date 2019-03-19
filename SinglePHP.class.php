@@ -428,12 +428,8 @@ class DB {
         }
         $this->_db = @new mysqli($dbConf['DB_HOST'].':'.$dbConf['DB_PORT'],$dbConf['DB_USER'],$dbConf['DB_PWD'],$dbConf['DB_NAME']);
         if($this->_db === false){
-            halt(mysqli_error());
+            halt($this->_db->error);
         }
-        /*$selectDb = mysqli_select_db($dbConf['DB_NAME'],$this->_db);
-        if($selectDb === false){
-            halt(mysqli_error());
-        }*/
         $this->_db->set_charset($dbConf['DB_CHARSET']);
     }
     private function __clone(){}
