@@ -103,8 +103,7 @@ class SinglePHP {
      */
     private $a;
     /**
-     * 参数导入
-     * Param 
+     * Param
      * @var array
      */
     private $p;
@@ -151,6 +150,7 @@ class SinglePHP {
         if(strcmp(strtoupper($pathMod),'NORMAL') === 0 || !isset($_SERVER['PATH_INFO'])){
             $this->c = isset($_GET['c'])?$_GET['c']:'Index';
             $this->a = isset($_GET['a'])?$_GET['a']:'Index';
+            $this->p = explode("/", trim(isset($_GET['p'])?$_GET['p']:'','/')); //修改普通模式参数设置，使用/分割
         }else{
             $pathInfo = isset($_SERVER['PATH_INFO'])?$_SERVER['PATH_INFO']:'';
             // echo $pathInfo . PHP_EOL;
@@ -279,23 +279,6 @@ class Controller {
         exit;
     }
 
-    /**
-     * 获取页面、参数等信息
-     * @return array $arrray 返回的参数变量
-     */
-    protected function parse($type){
-        $url = $_SERVER["REQUEST_URI"];
-        $position = strpos($url, '?');
-        $url = $position === false ? $url : substr($url, 0, $position);
-        // 删除前后的“/”
-        $url = trim($url, '/');
-        var_dump($url);
-        if ($url) {
-            // 使用“/”分割字符串，并保存在数组中
-            $urlArray = explode('/', $url);
-        }
-        print_r($urlArray);
-    }
 }
 
 /**
@@ -404,7 +387,7 @@ class View {
     /**
      * 压缩php模板
      * @param string $path 模板文件路径
-     * @return $newpath 返回压缩后模板文件路径
+     * @return $newpath 返回干净模板文件路径
      */
     protected static function clearTemplate($path){
         $newpath = dirname($path) . "\\clear_" . basename($path);
