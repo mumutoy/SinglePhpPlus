@@ -103,6 +103,12 @@ class SinglePHP {
      */
     private $a;
     /**
+     * 参数导入
+     * Param 
+     * @var array
+     */
+    private $p;
+    /**
      * 单例
      * @var SinglePHP
      */
@@ -147,17 +153,23 @@ class SinglePHP {
             $this->a = isset($_GET['a'])?$_GET['a']:'Index';
         }else{
             $pathInfo = isset($_SERVER['PATH_INFO'])?$_SERVER['PATH_INFO']:'';
+            // echo $pathInfo . PHP_EOL;
             $pathInfoArr = explode('/',trim($pathInfo,'/'));
+            // print_r($pathInfoArr);
+            $this->p = $pathInfoArr;
             if(isset($pathInfoArr[0]) && $pathInfoArr[0] !== ''){
                 $this->c = $pathInfoArr[0];
+                array_shift($this->p);
             }else{
                 $this->c = 'Index';
             }
             if(isset($pathInfoArr[1])){
                 $this->a = $pathInfoArr[1];
+                array_shift($this->p);
             }else{
                 $this->a = 'Index';
             }
+            // print_r($this->p);
         }
         if(!class_exists($this->c.'Controller')){
             halt('控制器'.$this->c.'不存在');
@@ -167,7 +179,7 @@ class SinglePHP {
         if(!method_exists($controller, $this->a.'Action')){
             halt('方法'.$this->a.'不存在');
         }
-        call_user_func(array($controller,$this->a.'Action'));
+        call_user_func(array($controller, $this->a.'Action'), $this->p); // 导入参数 $this->p
     }
 
     /**
@@ -179,6 +191,8 @@ class SinglePHP {
             includeIfExist(C('APP_FULL_PATH').'/Controller/'.$class.'.class.php');
         }elseif(substr($class,-6)=='Widget'){
             includeIfExist(C('APP_FULL_PATH').'/Widget/'.$class.'.class.php');
+        }elseif(substr($class,-5)=='Model'){
+            includeIfExist(C('APP_FULL_PATH').'/Model/'.$class.'.class.php');
         }else{
             includeIfExist(C('APP_FULL_PATH').'/Lib/'.$class.'.class.php');
         }
@@ -237,6 +251,16 @@ class Controller {
     protected function assign($name,$value){
         $this->_view->assign($name,$value);
     }
+
+    /**
+     * 为视图定义是否使用压缩模板
+     * @param bool $clear 是否使用压缩模板
+     * @return void
+     */
+    protected function clear($clear){
+        $this->_view->clear($clear);
+    }
+
     /**
      * 将数据用json格式输出至浏览器，并停止执行代码
      * @param array $data 要输出的数据
@@ -254,6 +278,24 @@ class Controller {
         header("Location: $url");
         exit;
     }
+
+    /**
+     * 获取页面、参数等信息
+     * @return array $arrray 返回的参数变量
+     */
+    protected function parse($type){
+        $url = $_SERVER["REQUEST_URI"];
+        $position = strpos($url, '?');
+        $url = $position === false ? $url : substr($url, 0, $position);
+        // 删除前后的“/”
+        $url = trim($url, '/');
+        var_dump($url);
+        if ($url) {
+            // 使用“/”分割字符串，并保存在数组中
+            $urlArray = explode('/', $url);
+        }
+        print_r($urlArray);
+    }
 }
 
 /**
@@ -270,6 +312,13 @@ class View {
      * @var string
      */
     private $_viewPath;
+
+    /**
+     * 视图文件是否压缩
+     * @var bool
+     */
+    private $_clearTemplate;
+
     /**
      * 视图变量列表
      * @var array
@@ -301,6 +350,17 @@ class View {
     public function assign($key, $value) {
         $this->_data[$key] = $value;
     }
+
+    
+    /**
+     * 为视图定义是否使用压缩模板
+     * @param bool $clear 是否使用压缩模板
+     * @return void
+     */
+    public function clear($clear = false) {
+        $this->_clearTemplate = $clear;
+    }
+
     /**
      * 渲染模板并输出
      * @param null|string $tplFile 模板文件路径，相对于App/View/文件的相对路径，不包含后缀名，例如index/index
@@ -310,7 +370,19 @@ class View {
         $this->_viewPath = $this->_tplDir . $tplFile . '.php';
         unset($tplFile);
         extract($this->_data);
-        include $this->_viewPath;
+        if($this->_clearTemplate){
+            // 获取压缩后的模板路径
+            $tmpPath = $this->clearTemplate($this->_viewPath);
+            if($tmpPath != false){  // 压缩成功，直接调用压缩模板
+                include $tmpPath;
+            }else{                  // 压缩失败，使用原始模板
+                include $this->_viewPath;
+            }
+        }else{
+            include $this->_viewPath;
+        }
+        
+        
     }
     /**
      * 用于在模板文件中包含其他模板
@@ -327,6 +399,47 @@ class View {
         unset($data);
         extract(self::$tmpData['data']);
         include self::$tmpData['path'];
+    }
+
+    /**
+     * 压缩php模板
+     * @param string $path 模板文件路径
+     * @return $newpath 返回压缩后模板文件路径
+     */
+    protected static function clearTemplate($path){
+        $newpath = dirname($path) . "\\clear_" . basename($path);
+        if(is_file($newpath)){
+            return $newpath;
+        }else{
+            $page_html = file_get_contents($path); // 获取页面内容
+            $page_html = str_replace("\r\n", '', $page_html); //清除换行符 
+            $page_html = str_replace("\n", '', $page_html); //清除换行符 
+            $page_html = str_replace("\t", '', $page_html); //清除制表符 
+            $pattern = array ( 
+                "/> *([^ ]*) *</", //去掉注释标记 
+                "/[\s]+/", 
+                "/<!--[^!]*-->/", 
+                "/\" /", 
+                "/ \"/", 
+                "'/\*[^*]*\*/'" 
+            ); 
+            $replace = array ( 
+                ">\\1<", 
+                " ", 
+                "", 
+                "\"", 
+                "\"", 
+                "" 
+            ); 
+            $page_html = preg_replace($pattern, $replace, $page_html); 
+            $page_html = preg_replace("/;*\s*\?>/", "; ?>", str_replace('<?php echo ', '<?=', $page_html));
+            
+            if(file_put_contents($newpath, $page_html)){
+                return $newpath;
+            }else{
+                return false;
+            }
+        }
     }
 }
 
@@ -426,9 +539,9 @@ class DB {
         if(!isset($dbConf['DB_CHARSET'])){
             $dbConf['DB_CHARSET'] = 'utf8';
         }
-        $this->_db = @new mysqli($dbConf['DB_HOST'].':'.$dbConf['DB_PORT'],$dbConf['DB_USER'],$dbConf['DB_PWD'],$dbConf['DB_NAME']);
-        if($this->_db === false){
-            halt(mysqli_error());
+        $this->_db = new mysqli($dbConf['DB_HOST'].':'.$dbConf['DB_PORT'],$dbConf['DB_USER'],$dbConf['DB_PWD'],$dbConf['DB_NAME']);
+        if(!$this->_db){
+            halt($this->_db->mysqli_connect_errno() . $this->_db->mysqli_connect_error());
         }
         /*$selectDb = mysqli_select_db($dbConf['DB_NAME'],$this->_db);
         if($selectDb === false){
