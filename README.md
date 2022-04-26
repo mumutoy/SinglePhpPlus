@@ -52,8 +52,10 @@ English: [http://leo108.github.io/SinglePHP/en/](http://leo108.github.io/SingleP
 
     <?php
     class IndexController extends Controller {       //控制器必须继承Controller类或其子类
-        public function IndexAction(){               //默认Action
+        public function IndexAction($param){         //默认Action
+            var_dump($param);                        //打印参数
             $this->assign('content', 'Hello World'); //给模板变量赋值
+            $this->clear(ture);                      //压缩php模板文件
             $this->display();                        //渲染吧骚年
         }
     }
