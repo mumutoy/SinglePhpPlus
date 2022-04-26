@@ -21,6 +21,8 @@ English: [http://leo108.github.io/SinglePHP/en/](http://leo108.github.io/SingleP
     ├── App                                 #业务代码文件夹，可在配置中指定路径
     │   ├── Controller                      #控制器文件夹
     │   │   └── IndexController.class.php
+    │   ├── Model                           #Model目录
+    │   │   └── IndexModel.class.php
     │   ├── Lib                             #外部库
     │   ├── Log                             #日志文件夹，需要写权限
     │   ├── View                            #模板文件夹
