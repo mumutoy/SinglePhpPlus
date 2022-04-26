@@ -1,6 +1,11 @@
 <?php
 class IndexController extends BaseController {
     public function IndexAction(){
+        // 测试数据库
+        $m = new IndexModel;
+        $test = $m->test();
+        $this->assign('test', $test);
+        
         $this->assign('title', 'SinglePHP');
         $this->display();
     }
